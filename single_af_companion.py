@@ -1,3 +1,4 @@
+import gradio as gr
 import subprocess
 
 def run_ollama(prompt):
@@ -6,44 +7,72 @@ def run_ollama(prompt):
     result = subprocess.run(command, shell=True, capture_output=True, text=True)
     return result.stdout.strip()
 
-def print_menu():
-    """Print the menu options for the user."""
-    print("\nWhat would you like to do?")
-    print("1. Hear a joke")
-    print("2. Get some advice")
-    print("3. Celebrate singlehood")
-    print("4. Exit")
+def chatbot(user_input, theme):
+    """Chat with the Single AF Virtual Companion."""
+    if "joke" in user_input.lower():
+        prompt = "Tell me a funny joke about being single."
+    elif "advice" in user_input.lower():
+        prompt = "Give me some uplifting advice for someone who is single on Valentine's Day."
+    elif "celebrate" in user_input.lower():
+        prompt = "Write a short celebration message for someone who is proudly single."
+    else:
+        prompt = f"Respond to this in a friendly and supportive way: {user_input}"
 
-def main():
-    print("Welcome to your Virtual Companion! 🎉")
-    name = input("What's your name? ")
-    print(f"Hi {name}! I'm here to make your Valentine's Day awesome. Let's get started!")
+    response = run_ollama(prompt)
+    return response, theme
 
-    while True:
-        print_menu()
-        choice = input("Enter your choice (1-4): ")
+# Custom CSS for light and dark themes
+custom_css = """
+.light-theme { background-color: #ffffff; color: #000000; }
+.dark-theme { background-color: #1e1e1e; color: #ffffff; }
+"""
 
-        if choice == "1":
-            prompt = "Tell me a funny joke about being single."
-            response = run_ollama(prompt)
-            print(f"\n🎭 Joke: {response}\n")
+# Gradio Interface
+with gr.Blocks(css=custom_css) as demo:
+    gr.Markdown("# 🌟 Single AF Virtual Companion 🌟")
+    gr.Markdown("Welcome to your Single AF Virtual Companion! Get jokes, advice, or celebrate singlehood with me.")
 
-        elif choice == "2":
-            prompt = "Give me some uplifting advice for someone who is single on Valentine's Day."
-            response = run_ollama(prompt)
-            print(f"\n💡 Advice: {response}\n")
+    # Dropdown for theme selection
+    theme = gr.Dropdown(choices=["Light", "Dark"], value="Light", label="Select Theme")
 
-        elif choice == "3":
-            prompt = "Write a short celebration message for someone who is proudly single."
-            response = run_ollama(prompt)
-            print(f"\n🎉 Celebration: {response}\n")
+    # Chatbot interface
+    with gr.Row():
+        user_input = gr.Textbox(lines=2, placeholder="Type something to your Single AF Companion...", label="Your Message")
+        output = gr.Textbox(lines=4, label="Companion", interactive=False)
 
-        elif choice == "4":
-            print(f"Goodbye, {name}! Remember, being single is awesome. 💪")
-            break
+    # Examples for quick input
+    gr.Examples(
+        examples=["Tell me a joke!", "Give me some advice.", "Celebrate singlehood with me!"],
+        inputs=user_input
+    )
 
+    # Button to submit input
+    submit_button = gr.Button("Send")
+
+    # Function to handle theme and chatbot response
+    def update_theme_and_chat(user_input, theme):
+        response, _ = chatbot(user_input, theme)
+        return response, theme
+
+    # Set up interactivity
+    submit_button.click(
+        fn=update_theme_and_chat,
+        inputs=[user_input, theme],
+        outputs=[output, theme]
+    )
+
+    # Dynamically update the theme
+    def apply_theme(theme):
+        if theme == "Light":
+            return gr.update(classes="light-theme")
         else:
-            print("Invalid choice. Please try again.")
+            return gr.update(classes="dark-theme")
 
-if __name__ == "__main__":
-    main()
+    theme.change(
+        fn=apply_theme,
+        inputs=theme,
+        outputs=demo
+    )
+
+# Launch the app
+demo.launch()
